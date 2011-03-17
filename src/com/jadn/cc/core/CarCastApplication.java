@@ -130,12 +130,13 @@ public class CarCastApplication extends Application implements ServiceConnection
     	"grapes", "Fix deletion and remembering location", "09-July-2009", "french fries", "order podcasts by date", "22-Jun-2009", //
     	"easter egg", "add/delete sites", "21-Jun-2009" };
 
-    private Intent serviceIntent = new Intent(this, ContentService.class);
+    private Intent serviceIntent;
     private ContentService contentService;
     private List<ContentServiceListener> listeners = new ArrayList<ContentServiceListener>();
 
     @Override public void onCreate() {
         super.onCreate();
+        serviceIntent = new Intent(this, ContentService.class);
         bindService(serviceIntent, this, Context.BIND_AUTO_CREATE);
     }
 

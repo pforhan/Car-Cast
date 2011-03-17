@@ -1,5 +1,7 @@
 package com.jadn.cc.services;
 
+import com.jadn.cc.core.CarCastApplication;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -29,7 +31,6 @@ import android.widget.TextView;
 import com.jadn.cc.core.Config;
 import com.jadn.cc.core.Sayer;
 import com.jadn.cc.core.Subscription;
-import com.jadn.cc.ui.BaseActivity;
 
 public class DownloadHelper implements Sayer {
 	public String currentSubscription = " ";
@@ -55,7 +56,7 @@ public class DownloadHelper implements Sayer {
 
 	protected void downloadNewPodCasts(ContentService contentService, String accounts, boolean canCollectData) {
 
-		say("Starting find/download new podcasts. CarCast ver " + BaseActivity.getVersion());
+		say("Starting find/download new podcasts. CarCast ver " + CarCastApplication.getVersion());
 		say("Problems? please use Menu / Email Download Report - THANKS!");
 
 		List<Subscription> sites = contentService.getSubscriptions();
@@ -242,7 +243,7 @@ public class DownloadHelper implements Sayer {
 			}
 			// println "next: "+url
 		}
-		throw new IOException(BaseActivity.getAppTitle() + " redirect limit reached");
+		throw new IOException(CarCastApplication.getAppTitle() + " redirect limit reached");
 	}
 
 	public String getStatus() {
@@ -282,7 +283,7 @@ public class DownloadHelper implements Sayer {
 					URLConnection conn = url.openConnection();
 					conn.setDoOutput(true);
 					OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
-					wr.write("appVersion=" + URLEncoder.encode(BaseActivity.getVersion(), "UTF-8"));
+					wr.write("appVersion=" + URLEncoder.encode(CarCastApplication.getVersion(), "UTF-8"));
 					wr.write('&');
 					wr.write("accounts=" + URLEncoder.encode(accounts, "UTF-8"));
 					wr.write('&');

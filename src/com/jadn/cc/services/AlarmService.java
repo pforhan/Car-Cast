@@ -79,7 +79,7 @@ public class AlarmService extends Service {
         		}
 
 	        	// Start downloading podcasts
-        		Log.i("CarCast", "Setting up serviceConnection");
+        		Log.i("CarCast", "AlarmService Setting up serviceConnection to ContentService");
         		ServiceConnection conn = new ServiceConnection() {
 
 					@Override

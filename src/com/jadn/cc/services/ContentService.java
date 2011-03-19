@@ -30,16 +30,16 @@ import java.io.File;
 import java.util.List;
 
 public class ContentService extends Service implements OnCompletionListener {
-  /**
-   * Class for clients to access.  Because we know this service always
-   * runs in the same process as its clients, we don't need to deal with
-   * IPC.
-   */
-  public class LocalBinder extends Binder {
-      public ContentService getService() {
-          return ContentService.this;
-      }
-  }
+    /**
+     * Class for clients to access.  Because we know this service always
+     * runs in the same process as its clients, we don't need to deal with
+     * IPC.
+     */
+    public class LocalBinder extends Binder {
+        public ContentService getService() {
+            return ContentService.this;
+        }
+    }
 
 	private final IBinder binder = new LocalBinder();
 
@@ -55,7 +55,6 @@ public class ContentService extends Service implements OnCompletionListener {
 	SubscriptionHelper subHelper = new FileSubscriptionHelper(siteListFile,
 			legacyFile);
 	boolean wasPausedByPhoneCall;
-	boolean idle = false;
 
 	/*
 	 * private boolean _wifiWasDisabledBeforeAutoDownload = false;
@@ -429,8 +428,14 @@ public class ContentService extends Service implements OnCompletionListener {
 
 	@Override
 	public IBinder onBind(Intent intent) {
+	    Log.i("CarCast", "ContentService binding "+intent);
 		return binder;
 	}
+
+	@Override public boolean onUnbind(Intent intent) {
+        Log.i("CarCast", "ContentService unbinding "+intent);
+        return super.onUnbind(intent);
+    }
 
 	@Override
 	public void onCompletion(MediaPlayer mp) {
@@ -481,6 +486,12 @@ public class ContentService extends Service implements OnCompletionListener {
 
 		restoreState();
 	}
+
+	@Override public void onDestroy() {
+        super.onDestroy();
+        Log.i("CarCast", "ContentService destroyed");
+//        Toast.makeText(getApplication(), "Service Destroyed", 1000).show();
+    }
 
 	public void pauseNow() {
 		if (mediaPlayer.isPlaying()) {
@@ -749,6 +760,10 @@ public class ContentService extends Service implements OnCompletionListener {
 
 	public boolean isPlaying() {
 	    return mediaPlayer.isPlaying();
+	}
+
+	public boolean isIdle() {
+	    return !isPlaying() && (downloadHelper == null || downloadHelper.idle);
 	}
 
     public void purgeAll() {

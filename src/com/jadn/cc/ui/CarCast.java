@@ -46,6 +46,7 @@ public class CarCast extends BaseActivity {
 			updateUI();
 		}
 	};
+    private BroadcastReceiver broadcastReceiver;
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -94,7 +95,7 @@ public class CarCast extends BaseActivity {
 
 		super.onCreate(savedInstanceState);
 
-		registerReceiver(new BroadcastReceiver() {
+		broadcastReceiver = new BroadcastReceiver() {
 			@Override
 			public void onReceive(Context context, Intent intent) {
 				if (intent != null) { // && intent.getExtras().getInt("state")
@@ -107,7 +108,7 @@ public class CarCast extends BaseActivity {
 					}
 				}
 			}
-		}, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+		};
 
 		setTitle(CarCastApplication.getAppTitle());
 
@@ -228,8 +229,9 @@ public class CarCast extends BaseActivity {
 	}
 
 	@Override public void finish() {
+	    Log.i("CarCast", "Finishing CC; contentService is "+contentService);
 	    if (contentService != null
-	            && contentService.isPlaying() == false) {
+	            && contentService.isIdle()) {
             getCarCastApplication().stopContentService();
         }
 	    super.finish();
@@ -296,6 +298,8 @@ public class CarCast extends BaseActivity {
 		super.onPause();
 
 		updater.allDone();
+		unregisterReceiver(broadcastReceiver);
+
 	}
 
 	@Override
@@ -303,6 +307,7 @@ public class CarCast extends BaseActivity {
 		super.onResume();
 
 		updater = new Updater(handler, mUpdateResults);
+        registerReceiver(broadcastReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
 	}
 
 	private void saveLastRun() {

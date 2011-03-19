@@ -7,13 +7,14 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageInfo;
 import android.os.IBinder;
+import android.util.Log;
 import com.jadn.cc.services.ContentService;
 import com.jadn.cc.services.ContentService.LocalBinder;
 import com.jadn.cc.trace.TraceUtil;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CarCastApplication extends Application implements ServiceConnection {
+public class CarCastApplication extends Application {
     public final static String[] releaseData = new String[] {
     "28-Feb-2011", "Added code to keep wifi on, if it is on when downloading starts. (Round II)",
     "26-Feb-2011", "Try and make landscape mode more usable.",
@@ -137,22 +138,25 @@ public class CarCastApplication extends Application implements ServiceConnection
     @Override public void onCreate() {
         super.onCreate();
         serviceIntent = new Intent(this, ContentService.class);
-        bindService(serviceIntent, this, Context.BIND_AUTO_CREATE);
     }
 
-    @Override public void onServiceConnected(ComponentName name, IBinder iservice) {
-        if (name.getClassName().equals(ContentService.class.getName())) {
-            contentService = ((LocalBinder) iservice).getService();
-            fireContentServiceChanged();
+    private ServiceConnection contentServiceConnection = new ServiceConnection() {
+        @Override public void onServiceConnected(ComponentName name, IBinder iservice) {
+            Log.i("CarCast", "onServiceConnected; CN is "+ name + "; binder is "+iservice);
+            if (name.getClassName().equals(ContentService.class.getName())) {
+                contentService = ((LocalBinder) iservice).getService();
+                fireContentServiceChanged();
+            }
         }
-    }
 
-    @Override public void onServiceDisconnected(ComponentName name) {
-        if (name.getClassName().equals(ContentService.class.getName())) {
-            contentService = null;
-            fireContentServiceChanged();
+        @Override public void onServiceDisconnected(ComponentName name) {
+            Log.i("CarCast", "onServiceDisconnected; CN is "+ name);
+            if (name.getClassName().equals(ContentService.class.getName())) {
+                contentService = null;
+                fireContentServiceChanged();
+            }
         }
-    }
+    };
 
     private void fireContentServiceChanged() {
         for (ContentServiceListener listener : listeners) {
@@ -161,6 +165,13 @@ public class CarCastApplication extends Application implements ServiceConnection
     }
 
     public void addContentServiceListener(ContentServiceListener listener) {
+        // make sure the service is running (may have been shut down by stopping
+        // CarCast previously).  Note that after the service has been stopped, we
+        // need to bind to it again.
+        // BIND_AUTO_CREATE forces the service to start running and continue
+        // running until unbound.
+        bindService(serviceIntent, contentServiceConnection, Context.BIND_AUTO_CREATE);
+
         listeners.add(listener);
         // notify immediately if we have a contentService:
         listener.onContentServiceChanged(contentService);
@@ -197,6 +208,8 @@ public class CarCastApplication extends Application implements ServiceConnection
     }
 
     public void stopContentService() {
+        Log.i("CarCast", "requesting stop; contentService is "+contentService);
+        unbindService(contentServiceConnection);
         stopService(serviceIntent);
     }
 }

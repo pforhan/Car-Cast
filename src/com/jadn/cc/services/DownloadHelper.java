@@ -1,7 +1,11 @@
 package com.jadn.cc.services;
 
+import android.util.Log;
+import android.widget.TextView;
 import com.jadn.cc.core.CarCastApplication;
-
+import com.jadn.cc.core.Config;
+import com.jadn.cc.core.Sayer;
+import com.jadn.cc.core.Subscription;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,20 +21,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
-
 import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
-
-import android.net.wifi.WifiManager;
-import android.util.Log;
-import android.widget.TextView;
-
-import com.jadn.cc.core.Config;
-import com.jadn.cc.core.Sayer;
-import com.jadn.cc.core.Subscription;
 
 public class DownloadHelper implements Sayer {
 	public String currentSubscription = " ";
@@ -55,7 +49,8 @@ public class DownloadHelper implements Sayer {
 	SimpleDateFormat sdf = new SimpleDateFormat("MMM-dd hh:mma");
 
 	protected void downloadNewPodCasts(ContentService contentService, String accounts, boolean canCollectData) {
-
+	    // just to be explicit (or if a DownloadHelper ever gets reused):
+	    idle = false;
 		say("Starting find/download new podcasts. CarCast ver " + CarCastApplication.getVersion());
 		say("Problems? please use Menu / Email Download Report - THANKS!");
 
@@ -184,7 +179,7 @@ public class DownloadHelper implements Sayer {
 
 					tempFile.renameTo(castFile);
 					new MetaFile(newPodcasts.get(i), castFile).save();
-					
+
 					got++;
 					if (totalForThisPodcast != newPodcasts.get(i).getSize()) {
 						say("Note: reported size in rss did not match download.");

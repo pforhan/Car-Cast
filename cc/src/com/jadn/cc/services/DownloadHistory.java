@@ -12,41 +12,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.util.Log;
-
 import com.jadn.cc.core.Config;
 import com.jadn.cc.core.Sayer;
 import com.jadn.cc.core.Util;
 
 /**
  * The history of all downloaded episodes the data is backed into a file on the SD-card
- * 
+ *
  */
 public class DownloadHistory implements Sayer {
 	private static final String UNKNOWN_SUBSCRIPTION = "unknown";
 	private static File historyFile = new File(Config.PodcastsRoot, "history.prop");
 	private final static String HISTORY_TWO_HEADER = "history version 2";
-	private static DownloadHistory instance = null;
 	private List<HistoryEntry> historyEntries = new ArrayList<HistoryEntry>();
+	// TODO review purpose of sb field:
 	StringBuilder sb = new StringBuilder();
-
-	/**
-	 * Get the history singleton
-	 * 
-	 * @return the history
-	 */
-	public static DownloadHistory getInstance() {
-		if (instance == null) {
-			instance = new DownloadHistory();
-		}
-		return instance;
-	}
-	
 
 	/**
 	 * Create a object that represents the download history. It is backed to a file.
 	 */
 	@SuppressWarnings("unchecked")
-	private DownloadHistory() {
+	public DownloadHistory() {
 		try {
 			DataInputStream dis = new DataInputStream(new FileInputStream(historyFile));
 			String line = dis.readLine();
@@ -70,7 +56,7 @@ public class DownloadHistory implements Sayer {
 
 	/**
 	 * Add a item to the history
-	 * 
+	 *
 	 * @param metaNet podcast metadata
 	 */
 	public void add(MetaNet metaNet) {
@@ -80,15 +66,15 @@ public class DownloadHistory implements Sayer {
 
 	/**
 	 * Check if a item is in the history
-	 * 
+	 *
 	 * @param metaNet the item to check for
 	 * @return true it the item is in the history
 	 */
-	public boolean contains(MetaNet metaNet) {	
+	public boolean contains(MetaNet metaNet) {
 		for(HistoryEntry historyEntry: historyEntries){
 			if(!historyEntry.subscription.equals(UNKNOWN_SUBSCRIPTION) &&
 					!historyEntry.subscription.equals(metaNet.getSubscription())){
-					continue;				
+					continue;
 			}
 			if(historyEntry.podcastURL.equals(metaNet.getUrl())){
 				return true;
@@ -99,32 +85,31 @@ public class DownloadHistory implements Sayer {
 
 	/**
 	 * Remove history of all downloaded podcasts
-	 * 
+	 *
 	 * @return number of history items deleted
 	 */
 	public int eraseHistory() {
-		int size = instance.historyEntries.size();
-		instance.historyEntries = new ArrayList<HistoryEntry>();
+		int size = historyEntries.size();
+		historyEntries = new ArrayList<HistoryEntry>();
 		save();
 		return size;
 	}
 
 	/**
 	 * Remove history of all downloaded podcasts for the specified subscription
-	 * 
+	 *
 	 * @return number of history items deleted
 	 */
 	public int eraseHistory(String subscription) {
-		int size = instance.historyEntries.size();
+		int size = historyEntries.size();
 		List<HistoryEntry> nh = new ArrayList<HistoryEntry>();
-		for (HistoryEntry he : instance.historyEntries) {
+		for (HistoryEntry he : historyEntries) {
 			if (!he.subscription.equals(subscription))
 				nh.add(he);
 		}
-		instance.historyEntries = nh;
+		historyEntries = nh;
 		return size - nh.size();
 	}
-
 
 	private void save() {
 		try {
@@ -147,7 +132,7 @@ public class DownloadHistory implements Sayer {
 
 	/**
 	 * Get the current size of the download history
-	 * 
+	 *
 	 * @return the size
 	 */
 	public int size() {

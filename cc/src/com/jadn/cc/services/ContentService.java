@@ -1,9 +1,10 @@
 package com.jadn.cc.services;
 
+import java.io.File;
+import java.util.List;
+
 import android.app.Activity;
-import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -18,7 +19,6 @@ import android.preference.PreferenceManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-import com.jadn.cc.R;
 import com.jadn.cc.core.CarCastApplication;
 import com.jadn.cc.core.Config;
 import com.jadn.cc.core.Location;
@@ -26,9 +26,6 @@ import com.jadn.cc.core.MediaMode;
 import com.jadn.cc.core.Subscription;
 import com.jadn.cc.trace.ExceptionHandler;
 import com.jadn.cc.trace.TraceUtil;
-import com.jadn.cc.ui.CarCast;
-import java.io.File;
-import java.util.List;
 
 public class ContentService extends Service implements OnCompletionListener {
 	/**
@@ -44,15 +41,11 @@ public class ContentService extends Service implements OnCompletionListener {
 	private final IBinder binder = new LocalBinder();
 
 	int currentPodcastInPlayer;
-	DownloadHelper downloadHelper;
-	private File legacyFile = new File(Config.CarCastRoot, "podcasts.txt");
 	Location location;
 	MediaMode mediaMode = MediaMode.UnInitialized;
 	MediaPlayer mediaPlayer = new MediaPlayer();
 	MetaHolder metaHolder;
 	SearchHelper searchHelper;
-	File siteListFile = new File(Config.CarCastRoot, "podcasts.properties");
-	SubscriptionHelper subHelper = new FileSubscriptionHelper(siteListFile, legacyFile);
 	boolean wasPausedByPhoneCall;
 
 	private PlayStatusListener playStatusListener;
@@ -61,9 +54,9 @@ public class ContentService extends Service implements OnCompletionListener {
 
 	/*
 	 * private boolean _wifiWasDisabledBeforeAutoDownload = false;
-	 * 
+	 *
 	 * public boolean getWifiWasDisabledBeforeAutoDownload() { return _wifiWasDisabledBeforeAutoDownload; }
-	 * 
+	 *
 	 * public void setWifiWasDisabledBeforeAutoDownload(boolean value) { _wifiWasDisabledBeforeAutoDownload = value; }
 	 */
 
@@ -79,10 +72,6 @@ public class ContentService extends Service implements OnCompletionListener {
 			sb.append('0');
 		sb.append(sec);
 		return sb.toString();
-	}
-
-	public boolean addSubscription(Subscription toAdd) {
-		return subHelper.addSubscription(toAdd);
 	}
 
 	public void bump(int bump) {
@@ -148,7 +137,7 @@ public class ContentService extends Service implements OnCompletionListener {
 	public CharSequence currentSummary() {
 		StringBuilder sb = new StringBuilder();
 		if (currentPodcastInPlayer >= metaHolder.getSize()) {
-			if (downloadHelper != null)
+			if (!getDownloadHelper().isIdle())
 				return "\nDownloading podcasts";
 			return "\nNo Podcasts have been downloaded.";
 		}
@@ -160,16 +149,13 @@ public class ContentService extends Service implements OnCompletionListener {
 
 	public String currentTitle() {
 		if (currentPodcastInPlayer >= metaHolder.getSize()) {
-			if (downloadHelper != null && !downloadHelper.idle) {
+			DownloadHelper downloadHelper = getDownloadHelper();
+			if (!downloadHelper.isIdle()) {
 				return "\nDownloading podcasts\n" + downloadHelper.getStatus();
 			}
 			return "No podcasts loaded.\nUse 'Menu' and 'Download Podcasts'";
 		}
 		return cm().getTitle();
-	}
-
-	public void deleteAllSubscriptions() {
-		subHelper.deleteAllSubscriptions();
 	}
 
 	// used by status when mediaplayer is not started.
@@ -206,14 +192,6 @@ public class ContentService extends Service implements OnCompletionListener {
 		}
 	}
 
-	public void deleteSubscription(Subscription sub) {
-		subHelper.removeSubscription(sub);
-	}
-
-	public void toggleSubscription(Subscription sub) {
-		subHelper.toggleSubscription(sub);
-	}
-
 	void deleteUpTo(int upTo) {
 		if (mediaPlayer.isPlaying()) {
 			pauseNow();
@@ -232,54 +210,7 @@ public class ContentService extends Service implements OnCompletionListener {
 			currentPodcastInPlayer = 0;
 	}
 
-	void doDownloadCompletedNotification(int got) {
-		// Get the notification manager service.
-		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Activity.NOTIFICATION_SERVICE);
-
-		mNotificationManager.cancel(23);
-
-		// Allow UI to update download text (only when in debug mode) this seems
-		// suboptimal
-		try {
-			Thread.sleep(2000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-
-		Notification notification = new Notification(R.drawable.icon2, "Download complete", System.currentTimeMillis());
-
-		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, CarCast.class), 0);
-
-		notification.setLatestEventInfo(getBaseContext(), "Downloads Finished", "Downloaded " + got + " podcasts.", contentIntent);
-		notification.flags = Notification.FLAG_AUTO_CANCEL;
-
-		mNotificationManager.notify(22, notification);
-
-		// clear so next user request will start new download
-		// downloadHelper = null;
-
-		metaHolder = new MetaHolder();
-		if (currentPodcastInPlayer >= metaHolder.getSize()) {
-			currentPodcastInPlayer = 0;
-		}
-	}
-
-	public boolean editSubscription(Subscription original, Subscription modified) {
-		return subHelper.editSubscription(original, modified);
-	}
-
-	public String encodedDownloadStatus() {
-		if (downloadHelper == null) {
-			return "";
-		}
-		String status = (downloadHelper.idle ? "idle" : "busy") + "," + downloadHelper.sitesScanned + "," + downloadHelper.totalSites + ","
-				+ downloadHelper.podcastsDownloaded + "," + downloadHelper.totalPodcasts + "," + downloadHelper.podcastsCurrentBytes + ","
-				+ downloadHelper.podcastsTotalBytes + "," + downloadHelper.currentSubscription + "," + downloadHelper.currentTitle;
-		return status;
-	}
-
 	private boolean fullReset() throws Exception {
-
 		mediaPlayer.reset();
 
 		if (currentPodcastInPlayer >= metaHolder.getSize())
@@ -331,7 +262,7 @@ public class ContentService extends Service implements OnCompletionListener {
 				sb.append("\nTitle: " + mf.getTitle());
 				String searchName = mf.getFeedName();
 				sb.append("\nFeed Title: " + searchName);
-				List<Subscription> subs = getSubscriptions();
+				List<Subscription> subs = getSubscriptionHelper().getSubscriptions();
 				for (Subscription sub : subs) {
 					if (sub.name.equals(searchName)) {
 						sb.append("\nFeed URL: " + sub.url);
@@ -348,14 +279,8 @@ public class ContentService extends Service implements OnCompletionListener {
 		return sb.toString();
 	}
 
-	/**
-	 * Gets a Map of URLs to Subscription Name
-	 * 
-	 * @return a map keyed on sub url to value of sub name
-	 */
-	public List<Subscription> getSubscriptions() {
-		List<Subscription> subscriptions = subHelper.getSubscriptions();
-		return subscriptions;
+	private CarCastApplication getCarCastApplication() {
+		return (CarCastApplication) getApplication();
 	}
 
 	public String getWhereString() {
@@ -486,9 +411,6 @@ public class ContentService extends Service implements OnCompletionListener {
 		if (!headsetPresent && isPlaying()) {
 			pauseNow();
 			bump(-2);
-			if (playStatusListener != null) {
-				playStatusListener.playStateUpdated(false);
-			}
 		}
 	}
 
@@ -508,6 +430,7 @@ public class ContentService extends Service implements OnCompletionListener {
 			cm().save();
 			// say(activity, "paused " + currentTitle());
 			saveState();
+			notifyPlayStatusChanged(false);
 		}
 		// activity.disableJumpButtons();
 	}
@@ -523,6 +446,7 @@ public class ContentService extends Service implements OnCompletionListener {
 					mediaPlayer.start();
 					mediaMode = MediaMode.Playing;
 					// activity.enableJumpButtons();
+					notifyPlayStatusChanged(true);
 				} else {
 					play();
 				}
@@ -542,6 +466,8 @@ public class ContentService extends Service implements OnCompletionListener {
 			mediaPlayer.start();
 			mediaMode = MediaMode.Playing;
 			saveState();
+			notifyPlayStatusChanged(true);
+
 		} catch (Exception e) {
 			TraceUtil.report(e);
 		}
@@ -579,10 +505,6 @@ public class ContentService extends Service implements OnCompletionListener {
 
 	public void purgeHeard() {
 		deleteUpTo(currentPodcastInPlayer);
-	}
-
-	public void resetToDemoSubscriptions() {
-		subHelper.resetToDemoSubscriptions();
 	}
 
 	public void restoreState() {
@@ -625,17 +547,14 @@ public class ContentService extends Service implements OnCompletionListener {
 		this.mediaMode = mediaMode;
 	}
 
-	public void startDownloadingNewPodCasts(final int max) {
+	public void startDownloadingNewPodCasts() {
 
-		if (downloadHelper == null || downloadHelper.idle) {
+		final DownloadHelper downloadHelper = getDownloadHelper();
+		if (downloadHelper.isIdle()) {
 			// cause display to reflect that we are getting ready to do a
 			// download
-			downloadHelper = null;
-
 			NotificationManager mNotificationManager = (NotificationManager) getSystemService(Activity.NOTIFICATION_SERVICE);
 			mNotificationManager.cancel(22);
-
-			updateNotification("Downloading podcasts started");
 
 			new Thread() {
 				@Override
@@ -651,8 +570,7 @@ public class ContentService extends Service implements OnCompletionListener {
 
 						try {
 							// The intent here is keep the phone from shutting
-							// down
-							// during a download.
+							// down during a download.
 							ContentService.this.setForeground(true);
 							wl.acquire();
 
@@ -665,14 +583,22 @@ public class ContentService extends Service implements OnCompletionListener {
 								Log.i("CarCast", "Locked Wifi.");
 							}
 
-							downloadHelper = new DownloadHelper(max);
-							String accounts = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getString("accounts",
-									"none");
-							boolean canCollectData = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getBoolean(
-									"canCollectData", true);
+							String accounts = PreferenceManager
+									.getDefaultSharedPreferences(
+											getApplicationContext()).getString(
+											"accounts", "none");
+							boolean canCollectData = PreferenceManager
+									.getDefaultSharedPreferences(
+											getApplicationContext())
+									.getBoolean("canCollectData", true);
 
-							downloadHelper.downloadNewPodCasts(ContentService.this, accounts, canCollectData);
+							downloadHelper.downloadNewPodCasts(
+									getSubscriptionHelper().getSubscriptions(),
+									Config.getMax(ContentService.this),
+									accounts,
+									canCollectData);
 						} finally {
+							downloadCompleted();
 							if (wifiLock != null) {
 								try {
 									wifiLock.release();
@@ -738,32 +664,23 @@ public class ContentService extends Service implements OnCompletionListener {
 
 	}
 
-	void updateNotification(String update) {
-		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Activity.NOTIFICATION_SERVICE);
-
-		Notification notification = new Notification(R.drawable.iconbusy, "Downloading started", System.currentTimeMillis());
-
-		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, CarCast.class), 0);
-
-		notification.setLatestEventInfo(getBaseContext(), "Downloading Started", update, contentIntent);
-		notification.flags = Notification.FLAG_ONGOING_EVENT;
-
-		mNotificationManager.notify(23, notification);
-
-	}
-
 	public boolean isPlaying() {
 		return mediaPlayer.isPlaying();
 	}
 
 	public boolean isIdle() {
+<<<<<<< HEAD
 		return !isPlaying() && (downloadHelper == null || downloadHelper.idle);
+=======
+	    return !isPlaying() && getDownloadHelper().isIdle();
+>>>>>>> 1838ddf... Pull downloadHelper creation out to CCApp
 	}
 
 	public void purgeAll() {
 		deleteUpTo(-1);
 	}
 
+<<<<<<< HEAD
 	public String getDownloadProgress() {
 		return downloadHelper.sb.toString();
 	}
@@ -771,6 +688,11 @@ public class ContentService extends Service implements OnCompletionListener {
 	public void purgeToCurrent() {
 		deleteUpTo(currentPodcastInPlayer);
 	}
+=======
+    public void purgeToCurrent() {
+        deleteUpTo(currentPodcastInPlayer);
+    }
+>>>>>>> 1838ddf... Pull downloadHelper creation out to CCApp
 
 	public void setPlayStatusListener(PlayStatusListener playStatusListener) {
 		this.playStatusListener = playStatusListener;
@@ -778,5 +700,26 @@ public class ContentService extends Service implements OnCompletionListener {
 
 	public void newContentAdded() {
 		metaHolder = new MetaHolder();
+	}
+
+	public void downloadCompleted() {
+		metaHolder = new MetaHolder();
+		if (currentPodcastInPlayer >= metaHolder.getSize()) {
+			currentPodcastInPlayer = 0;
+		}
+	}
+
+	private void notifyPlayStatusChanged(boolean playing) {
+		if (playStatusListener != null) {
+			playStatusListener.playStateUpdated(playing);
+		}
+	}
+
+	private SubscriptionHelper getSubscriptionHelper() {
+		return getCarCastApplication().getSubscriptionHelper();
+	}
+
+	private DownloadHelper getDownloadHelper() {
+		return getCarCastApplication().getDownloadHelper();
 	}
 }

@@ -10,23 +10,21 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.AdapterView.OnItemClickListener;
-
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import com.jadn.cc.R;
 import com.jadn.cc.core.CarCastApplication;
 import com.jadn.cc.core.Util;
 import com.jadn.cc.services.ContentService;
-import com.jadn.cc.services.DownloadHistory;
 import com.jadn.cc.services.MetaFile;
 import com.jadn.cc.services.MetaHolder;
 
@@ -90,7 +88,7 @@ public class PodcastList extends BaseActivity {
 
 		ListView listView = (ListView) findViewById(R.id.podcastList);
 		registerForContextMenu(listView);
-	
+
 
 		listView.setOnItemClickListener(new OnItemClickListener() {
 
@@ -172,12 +170,11 @@ public class PodcastList extends BaseActivity {
 					.setPositiveButton("Erase", new DialogInterface.OnClickListener() {
 						@Override
 						public void onClick(DialogInterface dialog, int which) {
-							int historyDeleted = DownloadHistory.getInstance().eraseHistory();
+							int historyDeleted = getCarCastApplication().getDownloadHistory().eraseHistory();
 							Util.toast(PodcastList.this, "Erased " + historyDeleted + " podcast from dowload history.");
 						}
 
 					}).setNegativeButton("Cancel", null).show();
-
 		}
 		return super.onMenuItemSelected(featureId, item);
 	}

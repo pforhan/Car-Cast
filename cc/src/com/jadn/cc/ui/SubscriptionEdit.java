@@ -11,7 +11,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.jadn.cc.R;
 import com.jadn.cc.core.Config;
 import com.jadn.cc.core.ExternalMediaStatus;
@@ -84,11 +83,11 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 								enabled); // TODO add max count, ordering
 						if (currentSub != null) {
 							// edit:
-							contentService.editSubscription(currentSub, newSub);
+							getSubscriptionHelper().editSubscription(currentSub, newSub);
 
 						} else {
 							// add:
-							contentService.addSubscription(newSub);
+							getSubscriptionHelper().addSubscription(newSub);
 						} // endif
 
 						SubscriptionEdit.this.setResult(RESULT_OK);
@@ -102,7 +101,7 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 
 					@Override
 					public void onClick(View v) {
-						DownloadHistory history = DownloadHistory.getInstance();
+						DownloadHistory history = getCarCastApplication().getDownloadHistory();
 						encloseureHandler = new EnclosureHandler(Config
 								.getMax(SubscriptionEdit.this), history);
 

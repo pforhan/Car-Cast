@@ -3,24 +3,15 @@ package com.jadn.cc.ui;
 import android.app.Activity;
 import com.jadn.cc.core.CarCastApplication;
 import com.jadn.cc.core.ContentServiceListener;
-import com.jadn.cc.core.Subscription;
 import com.jadn.cc.services.ContentService;
 import com.jadn.cc.services.PlayStatusListener;
-import java.util.List;
+import com.jadn.cc.services.SubscriptionHelper;
 
 
 public abstract class BaseActivity extends Activity implements ContentServiceListener, PlayStatusListener {
-	ContentService contentService;
+	protected ContentService contentService;
 
-	public ContentService getContentService() {
-		return contentService;
-	}
-
-	protected List<Subscription> getSubscriptions() {
-		return contentService.getSubscriptions();
-	}
-
-	protected void onContentService() { // TODO rename
+	protected void onContentService() {
 	    // does nothing by default
 	}
 
@@ -49,5 +40,9 @@ public abstract class BaseActivity extends Activity implements ContentServiceLis
 	@Override
 	public void playStateUpdated(boolean playing) {
 		// default implementation does nothing
+	}
+
+	protected SubscriptionHelper getSubscriptionHelper() {
+		return getCarCastApplication().getSubscriptionHelper();
 	}
 }

@@ -1,5 +1,7 @@
 package com.jadn.cc.ui;
 
+import com.jadn.cc.services.ContentService;
+
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -335,5 +337,9 @@ public class CarCast extends BaseActivity {
 		} catch (Throwable e) {
 			Log.e("cc", "", e);
 		}
+	}
+
+	public ContentService getContentService() {
+		return contentService;
 	}
 }

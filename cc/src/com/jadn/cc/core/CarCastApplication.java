@@ -1,5 +1,7 @@
 package com.jadn.cc.core;
 
+import java.io.File;
+
 import android.app.Application;
 import android.content.ComponentName;
 import android.content.Context;
@@ -10,6 +12,11 @@ import android.os.IBinder;
 import android.util.Log;
 import com.jadn.cc.services.ContentService;
 import com.jadn.cc.services.ContentService.LocalBinder;
+import com.jadn.cc.services.DownloadHelper;
+import com.jadn.cc.services.DownloadHistory;
+import com.jadn.cc.services.FileSubscriptionHelper;
+import com.jadn.cc.services.NotificationHelper;
+import com.jadn.cc.services.SubscriptionHelper;
 import com.jadn.cc.trace.TraceUtil;
 
 public class CarCastApplication extends Application {
@@ -153,11 +160,21 @@ public class CarCastApplication extends Application {
 	private Intent serviceIntent;
 	private ContentService contentService;
 	private ContentServiceListener contentServiceListener;
+	private File legacyFile = new File(Config.CarCastRoot, "podcasts.txt");
+	private File siteListFile = new File(Config.CarCastRoot, "podcasts.properties");
+	private SubscriptionHelper subscriptionHelper;
+	private NotificationHelper notificationHelper;
+	private DownloadHelper downloadHelper;
+	private DownloadHistory downloadHistory;
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		serviceIntent = new Intent(this, ContentService.class);
+		subscriptionHelper = new FileSubscriptionHelper(siteListFile, legacyFile);
+		notificationHelper = new NotificationHelper(this);
+		downloadHistory = new DownloadHistory();
+		downloadHelper = new DownloadHelper(downloadHistory, notificationHelper);
 	}
 
 	private ServiceConnection contentServiceConnection = new ServiceConnection() {
@@ -191,6 +208,26 @@ public class CarCastApplication extends Application {
 
 		// notify immediately if we have a contentService:
 		listener.onContentServiceChanged(contentService);
+	}
+
+	public SubscriptionHelper getSubscriptionHelper() {
+		return subscriptionHelper;
+	}
+
+	public ContentService getContentService() {
+		return contentService;
+	}
+
+	public NotificationHelper getNotificationHelper() {
+		return notificationHelper;
+	}
+
+	public DownloadHelper getDownloadHelper() {
+		return downloadHelper;
+	}
+
+	public DownloadHistory getDownloadHistory() {
+		return downloadHistory;
 	}
 
 	public static String getVersion() {

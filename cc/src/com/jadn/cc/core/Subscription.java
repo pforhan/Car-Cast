@@ -6,15 +6,17 @@ import android.os.Parcelable;
 public class Subscription implements Parcelable, Comparable<Subscription> {
 
     public static final Parcelable.Creator<Subscription> CREATOR = new Parcelable.Creator<Subscription>() {
-         public Subscription createFromParcel(Parcel in) {
+         @Override
+		public Subscription createFromParcel(Parcel in) {
              return new Subscription(in.readString(),   // name
                                      in.readString(),   // URL
                                      in.readInt(),      // max count
                                      OrderingPreference.values()[in.readInt()],// order pref
-                                     Boolean.parseBoolean(in.readString())); //enabled 
+                                     Boolean.parseBoolean(in.readString())); //enabled
          }
 
-         public Subscription[] newArray(int size) {
+         @Override
+		public Subscription[] newArray(int size) {
              return new Subscription[size];
          }
      };
@@ -35,7 +37,7 @@ public class Subscription implements Parcelable, Comparable<Subscription> {
     public Subscription(String name, String url, int maxDownloads, OrderingPreference orderingPreference) {
         this(name, url, maxDownloads, orderingPreference, true);
     }
-    
+
     public Subscription(String name, String url, int maxDownloads, OrderingPreference orderingPreference, boolean enabled) {
         this.name = name;
         this.url = url;

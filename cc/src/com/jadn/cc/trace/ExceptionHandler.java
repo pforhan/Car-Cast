@@ -10,18 +10,17 @@ import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.util.Log;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
-
-import android.content.Context;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.util.Log;
 
 public class ExceptionHandler {
 
@@ -94,6 +93,7 @@ public class ExceptionHandler {
 		dir.mkdir();
 		// Filter for ".stacktrace" files
 		FilenameFilter filter = new FilenameFilter() {
+			@Override
 			public boolean accept(File dir, String name) {
 				return name.endsWith(".stacktrace");
 			}
@@ -114,7 +114,7 @@ public class ExceptionHandler {
 					StringBuilder contents = new StringBuilder();
 					BufferedReader input = new BufferedReader(new FileReader(filePath));
 					String traceTime = input.readLine();
-					String line = null;					
+					String line = null;
 					while ((line = input.readLine()) != null) {
 						contents.append(line);
 						contents.append('\n');

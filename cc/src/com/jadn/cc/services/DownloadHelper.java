@@ -16,11 +16,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import javax.xml.parsers.SAXParserFactory;
-
 import android.util.Log;
-import android.widget.TextView;
-
 import com.jadn.cc.core.CarCastApplication;
 import com.jadn.cc.core.Config;
 import com.jadn.cc.core.Sayer;
@@ -28,46 +24,72 @@ import com.jadn.cc.core.Subscription;
 import com.jadn.cc.core.Util;
 
 public class DownloadHelper implements Sayer {
-	public String currentSubscription = " ";
-	public String currentTitle = " ";
-	DownloadHistory history = DownloadHistory.getInstance();
-	int max;
-	StringBuilder newText = new StringBuilder();
-	int podcastsCurrentBytes;
-	int podcastsDownloaded;
-	int podcastsTotalBytes;
-	int sitesScanned;
-	int totalPodcasts;
-	int totalSites;
-	TextView tv;
-	boolean idle;
-	StringBuilder sb = new StringBuilder();
+	private String currentSubscription = " ";
+	private String currentTitle = " ";
+	private int podcastsCurrentBytes;
+	private int podcastsDownloaded;
+	private int podcastsTotalBytes;
+	private int sitesScanned;
+	private int totalPodcasts;
+	private int totalSites;
+	private boolean idle = true;
+	private StringBuilder progress = new StringBuilder();
+	private SimpleDateFormat sdf = new SimpleDateFormat("MMM-dd hh:mma");
 
-	public DownloadHelper(int max) {
-		this.max = max;
+	private final DownloadHistory history;
+	private final NotificationHelper notificationHelper;
+
+	public DownloadHelper(DownloadHistory history, NotificationHelper notificationHelper) {
+		this.history = history;
+		this.notificationHelper = notificationHelper;
 	}
 
-	SimpleDateFormat sdf = new SimpleDateFormat("MMM-dd hh:mma");
+	public boolean isIdle() {
+		return idle;
+	}
 
-	protected void downloadNewPodCasts(ContentService contentService, String accounts, boolean canCollectData) {
-		// just to be explicit (or if a DownloadHelper ever gets reused):
-		idle = false;
+	// TODO analyze these and rename to be perfectly clear;
+	//  perhaps: getDownloadDetail, getReadableStatus, and getEncodedDownloadStatus
+    public String getDownloadProgress() {
+        return progress.toString();
+    }
+
+	public String getStatus() {
+		if (sitesScanned != totalSites)
+			return "Scanning Sites " + sitesScanned + "/" + totalSites;
+		return "Fetching " + podcastsDownloaded + "/" + totalPodcasts + "\n" + (podcastsCurrentBytes / 1024) + "k/"
+				+ (podcastsTotalBytes / 1024) + "k";
+	}
+
+	public String encodedDownloadStatus() {
+		if (this == null) {
+			return "";
+		}
+		String status = (idle ? "idle" : "busy") + ","
+				+ sitesScanned + "," + totalSites
+				+ "," + podcastsDownloaded + ","
+				+ totalPodcasts + ","
+				+ podcastsCurrentBytes + ","
+				+ podcastsTotalBytes + ","
+				+ currentSubscription + ","
+				+ currentTitle;
+		return status;
+	}
+
+	protected void downloadNewPodCasts(List<Subscription> sites, int max, String accounts, boolean canCollectData) {
+		// reset all state to allow a new download to begin:
+		reset();
 		say("Starting find/download new podcasts. CarCast ver " + CarCastApplication.getVersion());
 		say("Problems? please use Menu / Email Download Report - THANKS!");
-
-		List<Subscription> sites = contentService.getSubscriptions();
 
 		if (canCollectData) {
 			postSitesToJadn(accounts, sites);
 		}
 
 		say("\nSearching " + sites.size() + " subscriptions. " + sdf.format(new Date()));
-
 		totalSites = sites.size();
-
 		say("History of downloads contains " + history.size() + " podcasts.");
 
-		SAXParserFactory spf = SAXParserFactory.newInstance();
 		EnclosureHandler encloseureHandler = new EnclosureHandler(max, history);
 
 		for (Subscription sub : sites) {
@@ -75,13 +97,12 @@ public class DownloadHelper implements Sayer {
 			if (sub.enabled) {
 				try {
 					say("\nScanning subscription/feed: " + sub.url);
-					URL url = new URL(sub.url);
 					int foundStart = encloseureHandler.metaNets.size();
 					if (sub.maxDownloads == -1) {
 						encloseureHandler.max = max;
 					} else {
 						encloseureHandler.max = sub.maxDownloads;
-					} // endif
+					}
 
 					String name = sub.name;
 					encloseureHandler.setFeedName(name);
@@ -91,7 +112,7 @@ public class DownloadHelper implements Sayer {
 					String message = sitesScanned + "/" + sites.size() + ": " + name + ", "
 							+ (encloseureHandler.metaNets.size() - foundStart) + " new";
 					say(message);
-					contentService.updateNotification(message);
+					notificationHelper.updateNotification(message);
 
 				} catch (Throwable e) {
 					/* Display any Error to the GUI. */
@@ -103,8 +124,7 @@ public class DownloadHelper implements Sayer {
 			}
 
 			sitesScanned++;
-
-		} // endforeach
+		}
 
 		say("\nTotal enclosures " + encloseureHandler.metaNets.size());
 
@@ -115,7 +135,7 @@ public class DownloadHelper implements Sayer {
 			newPodcasts.add(metaNet);
 		}
 		say(newPodcasts.size() + " podcasts will be downloaded.");
-		contentService.updateNotification(newPodcasts.size() + " podcasts will be downloaded.");
+		notificationHelper.updateNotification(newPodcasts.size() + " podcasts will be downloaded.");
 
 		totalPodcasts = newPodcasts.size();
 		for (MetaNet metaNet : newPodcasts) {
@@ -129,7 +149,7 @@ public class DownloadHelper implements Sayer {
 		for (int i = 0; i < newPodcasts.size(); i++) {
 			String shortName = newPodcasts.get(i).getTitle();
 			say((i + 1) + "/" + newPodcasts.size() + " " + shortName);
-			contentService.updateNotification((i + 1) + "/" + newPodcasts.size() + " " + shortName);
+			notificationHelper.updateNotification((i + 1) + "/" + newPodcasts.size() + " " + shortName);
 			podcastsDownloaded = i + 1;
 
 			try {
@@ -146,14 +166,14 @@ public class DownloadHelper implements Sayer {
 				byte[] buf = new byte[16383];
 				int amt = 0;
 				int expectedSizeKilo = newPodcasts.get(i).getSize() / 1024;
-				String preDownload = sb.toString();
+				String preDownload = progress.toString();
 				int totalForThisPodcast = 0;
 				say(String.format("%dk/%dk 0", totalForThisPodcast / 1024, expectedSizeKilo) + "%\n");
 				while ((amt = is.read(buf)) >= 0) {
 					fos.write(buf, 0, amt);
 					podcastsCurrentBytes += amt;
 					totalForThisPodcast += amt;
-					sb = new StringBuilder(preDownload
+					progress = new StringBuilder(preDownload
 							+ String.format("%dk/%dk  %d", totalForThisPodcast / 1024, expectedSizeKilo,
 									(int) ((totalForThisPodcast / 10.24) / expectedSizeKilo)) + "%\n");
 				}
@@ -186,8 +206,18 @@ public class DownloadHelper implements Sayer {
 		}
 		say("Finished. Downloaded " + got + " new podcasts. " + sdf.format(new Date()));
 
-		contentService.doDownloadCompletedNotification(got);
+		notificationHelper.doDownloadCompletedNotification(got);
 		idle = true;
+	}
+
+	private void reset() {
+		idle = false;
+		progress = new StringBuilder();
+		podcastsDownloaded = 0;
+		podcastsTotalBytes = 0;
+		sitesScanned       = 0;
+		totalPodcasts      = 0;
+		totalSites         = 0;
 	}
 
 	// Deal with servers with "location" instead of "Location" in redirect
@@ -230,13 +260,6 @@ public class DownloadHelper implements Sayer {
 			// println "next: "+url
 		}
 		throw new IOException(CarCastApplication.getAppTitle() + " redirect limit reached");
-	}
-
-	public String getStatus() {
-		if (sitesScanned != totalSites)
-			return "Scanning Sites " + sitesScanned + "/" + totalSites;
-		return "Fetching " + podcastsDownloaded + "/" + totalPodcasts + "\n" + (podcastsCurrentBytes / 1024) + "k/"
-				+ (podcastsTotalBytes / 1024) + "k";
 	}
 
 	/**
@@ -290,19 +313,15 @@ public class DownloadHelper implements Sayer {
 					rd.close();
 				} catch (Exception e) {
 					Log.e("carcast", "updateSite", e);
-
 				}
-
 			}
 		}).start();
-
 	}
 
 	@Override
 	public void say(String text) {
-		sb.append(text);
-		sb.append('\n');
+		progress.append(text);
+		progress.append('\n');
 		Log.i("CarCast/Download", text);
 	}
-
 }

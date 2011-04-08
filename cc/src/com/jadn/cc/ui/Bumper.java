@@ -3,6 +3,7 @@ package com.jadn.cc.ui;
 import android.view.View;
 import android.view.View.OnClickListener;
 
+/** Ajusts current podcast time forward or back. */
 public class Bumper implements OnClickListener {
     int bump;
     CarCast carCast;

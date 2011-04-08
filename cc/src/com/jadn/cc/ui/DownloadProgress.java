@@ -20,32 +20,14 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-
 import com.jadn.cc.R;
 import com.jadn.cc.core.CarCastApplication;
-import com.jadn.cc.core.Config;
+import com.jadn.cc.services.DownloadHelper;
 
 public class DownloadProgress extends BaseActivity implements Runnable {
 
 	final Handler handler = new Handler();
 	Updater updater;
-
-	@Override
-	protected void onContentService() {
-		String status = contentService.encodedDownloadStatus();
-		boolean idle = false;
-		if (status.equals("")) {
-			idle = true;
-		} else {
-			if (status.split(",")[0].equals("idle")) {
-				idle = true;
-			}
-		}
-		Button startDownloads = (Button) findViewById(R.id.startDownloads);
-		Button abort = (Button) findViewById(R.id.AbortDownloads);
-		startDownloads.setEnabled(idle);
-		abort.setEnabled(!idle);
-	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -108,7 +90,7 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 	private void doDownloads()
 	{
 		reset();
-		contentService.startDownloadingNewPodCasts(Config.getMax(DownloadProgress.this));
+		contentService.startDownloadingNewPodCasts();
 
 		findViewById(R.id.AbortDownloads).setEnabled(true);
 		findViewById(R.id.startDownloads).setEnabled(false);
@@ -125,6 +107,17 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 	protected void onResume() {
 		super.onResume();
 		updater = new Updater(handler, this);
+		super.onResume();
+
+		boolean idle = getCarCastApplication().getDownloadHelper().isIdle();
+		updateButtonStates(idle);
+	}
+
+	private void updateButtonStates(boolean idle) {
+		Button startDownloads = (Button) findViewById(R.id.startDownloads);
+		Button abort = (Button) findViewById(R.id.AbortDownloads);
+		startDownloads.setEnabled(idle);
+		abort.setEnabled(!idle);
 	}
 
 	private void reset() {
@@ -156,18 +149,12 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 	@Override public void run() {
 		String downloadStatus = null;
 		try {
-			downloadStatus = contentService.encodedDownloadStatus();
+			final DownloadHelper downloadHelper = getCarCastApplication().getDownloadHelper();
+			downloadStatus = downloadHelper.encodedDownloadStatus();
 			if (!downloadStatus.equals("")) {
 				updateFromString(downloadStatus);
 			}
-			if (downloadStatus.equals("") || downloadStatus.startsWith("idle,")) {
-				findViewById(R.id.startDownloads).setEnabled(true);
-				findViewById(R.id.AbortDownloads).setEnabled(false);
-			} else {
-				// wasStarted = true;
-				findViewById(R.id.startDownloads).setEnabled(false);
-				findViewById(R.id.AbortDownloads).setEnabled(true);
-			}
+			updateButtonStates(downloadHelper.isIdle());
 		} catch (Exception e) {
 			CarCastApplication.esay(new RuntimeException("downloadStatus was: " + downloadStatus, e));
 		}

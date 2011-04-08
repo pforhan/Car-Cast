@@ -9,23 +9,21 @@ import java.util.Map;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
+import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
-import android.widget.AdapterView.AdapterContextMenuInfo;
-
 import com.jadn.cc.R;
 import com.jadn.cc.core.CarCastApplication;
 import com.jadn.cc.core.ExternalMediaStatus;
 import com.jadn.cc.core.Subscription;
 import com.jadn.cc.core.Util;
-import com.jadn.cc.services.DownloadHistory;
 
 /**
  * A good video about listview http://code.google.com/events/io/2010/sessions/world-of-listview-android.html
@@ -64,16 +62,16 @@ public class Subscriptions extends BaseActivity {
 		listView.setAdapter(listAdapter);
 	}
 
+	@Override
+	protected void onResume() {
+		super.onResume();
+		reloadSubscriptions();
+	}
+
 	// Invoked when returning from a subscription edit
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
-		reloadSubscriptions();
-	}
-
-	// Invoked when the background service is bound (hooked up) to this Activity
-	@Override
-	protected void onContentService() {
 		reloadSubscriptions();
 	}
 
@@ -86,13 +84,13 @@ public class Subscriptions extends BaseActivity {
 
 		if(item.getTitle().equals(DISABLE_SUBSCRIPTION) || item.getTitle().equals(ENABLE_SUBSCRIPTION))
 		{
-			contentService.toggleSubscription(sub);
+			getSubscriptionHelper().toggleSubscription(sub);
 			reloadSubscriptions();
 			Subscriptions.this.listAdapter.notifyDataSetChanged();
 			return true;
 
 		} else if (item.getTitle().equals(DELETE_SUBSCRIPTION)) {
-			contentService.deleteSubscription(sub);
+			getSubscriptionHelper().removeSubscription(sub);
 			Subscriptions.this.subscriptions.remove(info.position);
 			Subscriptions.this.listAdapter.notifyDataSetChanged();
 			return true;
@@ -102,7 +100,7 @@ public class Subscriptions extends BaseActivity {
 			intent.putExtra("subscription", sub);
 			startActivityForResult(intent, info.position);
 		} else if (item.getTitle().equals(ERASE_SUBSCRIPTIONS_S_HISTORY)) {
-			int erasedPodcasts = DownloadHistory.getInstance().eraseHistory(sub.name);
+			int erasedPodcasts = getCarCastApplication().getDownloadHistory().eraseHistory(sub.name);
 			Util.toast(this, "Removed " + erasedPodcasts + " podcasts from download history.");
 		}
 		return true;
@@ -141,12 +139,12 @@ public class Subscriptions extends BaseActivity {
 			return true;
 		}
 		if (item.getItemId() == R.id.deleteAllSubscriptions) {
-			contentService.deleteAllSubscriptions();
+			getSubscriptionHelper().deleteAllSubscriptions();
 			reloadSubscriptions();
 			return true;
 		}
 		if (item.getItemId() == R.id.resetToDemoSubscriptions) {
-			contentService.resetToDemoSubscriptions();
+			getSubscriptionHelper().resetToDemoSubscriptions();
 			reloadSubscriptions();
 			return true;
 		}
@@ -161,11 +159,7 @@ public class Subscriptions extends BaseActivity {
 	protected void reloadSubscriptions() {
 		subscriptions.clear();
 
-		// If we have no content service... then game over... cant display anything
-		List<Subscription> sites = new ArrayList<Subscription>();
-		if (contentService != null) {
-			sites = getSubscriptions();
-		}
+		List<Subscription> sites = getSubscriptionHelper().getSubscriptions();
 		// sort sites by name:
 		Collections.sort(sites);
 

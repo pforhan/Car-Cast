@@ -13,7 +13,6 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.TextView;
-
 import com.jadn.cc.R;
 import com.jadn.cc.core.CarCastApplication;
 import com.jadn.cc.core.Sayer;
@@ -121,7 +120,7 @@ public class Downloader extends BaseActivity implements Sayer, Runnable {
 	// Called once a second in the UI thread to update the screen.
 	@Override public void run() {
 		try {
-			String text = contentService.getDownloadProgress();
+			String text = getCarCastApplication().getDownloadHelper().getDownloadProgress();
 			if (text.length() != 0)
 				tv.setText(text);
 			else {

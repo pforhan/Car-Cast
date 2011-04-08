@@ -3,6 +3,7 @@ package com.jadn.cc.ui;
 import android.view.View;
 import android.view.View.OnClickListener;
 
+/** Moves to next or previous podcast */
 public class BumpCast implements OnClickListener {
     CarCast carCast;
     boolean direction;

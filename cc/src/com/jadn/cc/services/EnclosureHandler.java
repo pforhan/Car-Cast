@@ -5,11 +5,10 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.util.Log;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
-
-import android.util.Log;
 
 public class EnclosureHandler extends DefaultHandler {
 
@@ -100,7 +99,6 @@ public class EnclosureHandler extends DefaultHandler {
 				Log.i("content", "Not downloading, url doesn't end right type... " + atts.getValue("url"));
 				return;
 			}
-			// Log.i("content", localName + " " + atts.getValue("url"));
 			try {
 				if (max != STOP && (max == UNLIMITED || max > 0)) {
 					if (max > 0)

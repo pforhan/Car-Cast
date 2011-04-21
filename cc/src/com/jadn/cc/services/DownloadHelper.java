@@ -76,7 +76,8 @@ public class DownloadHelper implements Sayer {
 		return status;
 	}
 
-	protected void downloadNewPodCasts(List<Subscription> sites, int max, String accounts, boolean canCollectData) {
+	protected void downloadNewPodCasts(ContentService contentService, List<Subscription> sites,
+			int max, String accounts, boolean canCollectData) {
 		// reset all state to allow a new download to begin:
 		reset();
 		say("Starting find/download new podcasts. CarCast ver " + CarCastApplication.getVersion());
@@ -197,7 +198,7 @@ public class DownloadHelper implements Sayer {
 
 				}
 				say("-");
-				// update progress for player
+				// update progress for player TODO remove contentService param
 				contentService.newContentAdded();
 
 			} catch (Throwable e) {

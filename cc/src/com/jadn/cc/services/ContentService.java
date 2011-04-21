@@ -593,6 +593,7 @@ public class ContentService extends Service implements OnCompletionListener {
 									.getBoolean("canCollectData", true);
 
 							downloadHelper.downloadNewPodCasts(
+									ContentService.this,
 									getSubscriptionHelper().getSubscriptions(),
 									Config.getMax(ContentService.this),
 									accounts,
@@ -669,30 +670,16 @@ public class ContentService extends Service implements OnCompletionListener {
 	}
 
 	public boolean isIdle() {
-<<<<<<< HEAD
-		return !isPlaying() && (downloadHelper == null || downloadHelper.idle);
-=======
 	    return !isPlaying() && getDownloadHelper().isIdle();
->>>>>>> 1838ddf... Pull downloadHelper creation out to CCApp
 	}
 
 	public void purgeAll() {
 		deleteUpTo(-1);
 	}
 
-<<<<<<< HEAD
-	public String getDownloadProgress() {
-		return downloadHelper.sb.toString();
-	}
-
 	public void purgeToCurrent() {
 		deleteUpTo(currentPodcastInPlayer);
 	}
-=======
-    public void purgeToCurrent() {
-        deleteUpTo(currentPodcastInPlayer);
-    }
->>>>>>> 1838ddf... Pull downloadHelper creation out to CCApp
 
 	public void setPlayStatusListener(PlayStatusListener playStatusListener) {
 		this.playStatusListener = playStatusListener;
@@ -703,7 +690,6 @@ public class ContentService extends Service implements OnCompletionListener {
 	}
 
 	public void downloadCompleted() {
-		metaHolder = new MetaHolder();
 		if (currentPodcastInPlayer >= metaHolder.getSize()) {
 			currentPodcastInPlayer = 0;
 		}
